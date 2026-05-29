@@ -43,7 +43,7 @@ ORG_TYPE_MAP: dict[str, str] = {
 }
 
 # ── 상수 ─────────────────────────────────────────────────────────────────────
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "openai/gpt-4o-mini"
 MAX_RETRIES   = 2
 MAX_TOKENS    = 3000
 
@@ -111,8 +111,11 @@ def advise(
         references=refs, avg_ref_chars=avg_ref_chars, jd_summary=jd_summary,
     )
 
-    # 4. OpenAI API 호출
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    # 4. OpenRouter API 호출
+    client = OpenAI(
+        api_key=os.environ.get("OPENROUTER_API_KEY"),
+        base_url="https://openrouter.ai/api/v1",
+    )
     parsed: dict = {}
     tokens_used = 0
 
