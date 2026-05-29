@@ -10,8 +10,8 @@ openai>=1.30.0
 python-dotenv>=1.0.0
 
 # 임베딩 / 벡터DB
-chromadb>=0.4.0
-sentence-transformers>=2.7.0
+chromadb>=0.6.0,<1.0.0
+sentence-transformers>=5.0.0
 FlagEmbedding>=1.2.0
 numpy>=1.24.0
 tqdm>=4.66.0

@@ -76,7 +76,7 @@ def test_chroma_connection():
     print(SEP)
     t0 = time.time()
     try:
-        from ai.search import _get_col   # search.py 싱글톤 재사용 (충돌 방지)
+        from app.search import _get_col   # search.py 싱글톤 재사용 (충돌 방지)
         col = _get_col()
         count = col.count()
         elapsed = time.time() - t0
@@ -103,7 +103,7 @@ def test_rag_search(query: str, company: str | None, n: int = 5):
 
     t0 = time.time()
     try:
-        from ai.search import retrieve, print_results
+        from app.search import retrieve
         results = retrieve(query, company=company, n_results=n)
         elapsed = time.time() - t0
 
@@ -111,7 +111,8 @@ def test_rag_search(query: str, company: str | None, n: int = 5):
             print("  [주의] 검색 결과 없음 — company 필터를 제거하거나 다른 쿼리를 시도하세요.")
             return results
 
-        print_results(results)
+        for i, r in enumerate(results, 1):
+            print(f"  [{i}] {r['company']} | 유사도={r['similarity']:.4f} | {r['answer'][:60]}...")
         print(f"\n  검색 완료: {len(results)}건  ({elapsed:.2f}초)")
         print(f"  유사도 범위: {results[-1]['similarity']:.4f} ~ {results[0]['similarity']:.4f}")
         return results
@@ -134,7 +135,7 @@ def test_full_advise(draft: str, question: str, company: str):
 
     t0 = time.time()
     try:
-        from ai.advisor import advise
+        from app.advisor import advise
         result = advise(draft=draft, question=question, company=company)
         elapsed = time.time() - t0
 
@@ -188,7 +189,7 @@ def test_filter_search():
     print("  [4단계] 메타데이터 필터 검색 테스트")
     print(SEP)
 
-    from ai.search import retrieve
+    from app.search import retrieve
 
     filters = [
         {"label": "은행권 (bank) 동기 유형",  "kwargs": {"org_type": "bank",   "question_type": "motivation", "n_results": 3}},
