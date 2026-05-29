@@ -51,12 +51,9 @@ def _get_col():
     global _col
     if _col is None:
         import chromadb
-        from chromadb.config import Settings as ChromaSettings
-        client = chromadb.HttpClient(
-            host=settings.chroma_host,
-            port=settings.chroma_port,
-            settings=ChromaSettings(anonymized_telemetry=False),
-        )
+        from pathlib import Path
+        chroma_path = Path(__file__).parent.parent / "chroma_db"
+        client = chromadb.PersistentClient(path=str(chroma_path))
         _col = client.get_collection(COLLECTION)
     return _col
 
