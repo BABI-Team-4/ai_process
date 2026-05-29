@@ -1,9 +1,22 @@
+# FastAPI 서빙
 fastapi
 uvicorn[standard]
-openai
-python-dotenv
 pydantic
 pydantic-settings
-chromadb
-sentence-transformers
 httpx
+
+# AI 첨삭
+openai>=1.30.0
+python-dotenv>=1.0.0
+
+# 임베딩 / 벡터DB
+chromadb>=0.4.0
+sentence-transformers>=2.7.0
+FlagEmbedding>=1.2.0
+numpy>=1.24.0
+tqdm>=4.66.0
+
+# 크롤링
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+selenium>=4.15.0
