@@ -75,20 +75,15 @@ cd binesses_intellegence_4-
 
 ### 2단계 — 가상환경 생성 및 패키지 설치
 
-> ⚠️ **chromadb 버전 충돌 문제** 때문에 Python 3.10 전용 가상환경(`venv_chroma`)을 따로 사용합니다.
-
 ```bash
-# Python 3.10으로 가상환경 생성 (py 런처 사용 시)
-py -3.10 -m venv venv_chroma
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
 
-# Windows 활성화
-venv_chroma\Scripts\activate
-
-# 패키지 설치
 pip install -r requirements.txt
 ```
-
-Python 3.10이 없는 경우 [Python 3.10 다운로드](https://www.python.org/downloads/release/python-31011/)
 
 ### 3단계 — API 키 설정
 
@@ -137,8 +132,9 @@ python demo.py --all              # 전체 기업 순서대로
 ### 0. 환경 설정
 
 ```bash
-py -3.10 -m venv venv_chroma
-venv_chroma\Scripts\activate      # Windows
+python -m venv venv
+venv\Scripts\activate             # Windows
+source venv/bin/activate          # macOS/Linux
 pip install -r requirements.txt
 cp .env.example .env              # API 키 입력
 ```
@@ -276,6 +272,6 @@ python export_data.py
 | 크롤링 | requests, BeautifulSoup, Selenium |
 | 데이터 저장 | SQLite (essays.db) |
 | 임베딩 모델 | BAAI/bge-m3 (sentence-transformers) |
-| 벡터 DB | ChromaDB 0.6.x (Python 3.10 전용) |
+| 벡터 DB | ChromaDB (로컬 폴더 `chroma_db/`) |
 | LLM | OpenAI GPT-4o-mini |
-| 환경 | Python 3.10, venv_chroma |
+| 환경 | Python 3.10+ |

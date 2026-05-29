@@ -52,7 +52,11 @@ def _get_col():
     if _col is None:
         import chromadb
         from pathlib import Path
-        chroma_path = Path(__file__).parent.parent / "chroma_db"
+        chroma_path = (
+            Path(settings.chroma_path)
+            if settings.chroma_path
+            else Path(__file__).parent.parent / "chroma_db"
+        )
         client = chromadb.PersistentClient(path=str(chroma_path))
         _col = client.get_collection(COLLECTION)
     return _col
