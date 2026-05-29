@@ -43,7 +43,7 @@ ORG_TYPE_MAP: dict[str, str] = {
 }
 
 # ── 상수 ─────────────────────────────────────────────────────────────────────
-DEFAULT_MODEL = "openai/gpt-4o-mini"
+DEFAULT_MODEL = "openai/gpt-5.4-mini"
 MAX_RETRIES   = 2
 MAX_TOKENS    = 3000
 
