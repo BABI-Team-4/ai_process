@@ -152,6 +152,8 @@ def advise(
         "avg_ref_chars": avg_ref_chars,
         "references":  [
             {
+                "essay_id":   r.get("essay_id", 0),
+                "qna_id":     r.get("qna_id", 0),
                 "company":    r["company"],
                 "role":       r.get("role", ""),
                 "question":   r.get("question", ""),

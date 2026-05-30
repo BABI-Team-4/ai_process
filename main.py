@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.advisor import advise
+from app.chat import chat_reply
 from app.search import retrieve
 
 app = FastAPI(title="자소서AI - AI Process", version="1.0.0")
@@ -25,6 +26,18 @@ class AdviseRequest(BaseModel):
     company: str
     n_refs: int = 3
     min_similarity: float = 0.5
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    essay_question: str = ""
+    essay_answer: str = ""
+    company: str = ""
 
 
 class RetrieveRequest(BaseModel):
@@ -52,6 +65,19 @@ async def advise_endpoint(req: AdviseRequest):
         min_similarity=req.min_similarity,
     )
     return result
+
+
+@app.post("/chat")
+async def chat_endpoint(req: ChatRequest):
+    import asyncio
+    reply = await asyncio.to_thread(
+        chat_reply,
+        messages=[{"role": m.role, "content": m.content} for m in req.messages],
+        essay_question=req.essay_question,
+        essay_answer=req.essay_answer,
+        company=req.company,
+    )
+    return {"reply": reply}
 
 
 @app.post("/retrieve")

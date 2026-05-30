@@ -122,6 +122,7 @@ def retrieve(
             "char_count":    meta.get("char_count", 0),
             "similarity":    similarity,
             "qna_id":        meta.get("qna_id", 0),
+            "essay_id":      meta.get("essay_id", 0),
         })
 
     return results
