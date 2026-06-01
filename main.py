@@ -6,9 +6,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from fastapi import HTTPException
+
 from app.advisor import advise, SUPPORTED_COMPANIES
 from app.chat import chat_reply
 from app.search import retrieve
+from app.company_normalizer import normalize_company
 
 app = FastAPI(title="자소서AI - AI Process", version="1.0.0")
 
@@ -61,11 +64,17 @@ async def companies():
 @app.post("/advise")
 async def advise_endpoint(req: AdviseRequest):
     import asyncio
+    canonical = normalize_company(req.company)
+    if canonical is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"지원하지 않는 기업입니다: '{req.company}'. 지원 기업: {SUPPORTED_COMPANIES}",
+        )
     result = await asyncio.to_thread(
         advise,
         draft=req.draft,
         question=req.question,
-        company=req.company,
+        company=canonical,
         n_refs=req.n_refs,
         min_similarity=req.min_similarity,
     )
