@@ -27,6 +27,11 @@ from .jd_data import get_jd_summary
 load_dotenv()
 
 # ── ORG_TYPE_MAP (원래 crawling.db에 있던 것) ────────────────────────────────
+SUPPORTED_COMPANIES: list[str] = [
+    "삼성전자", "현대자동차", "SK하이닉스", "LG전자", "포스코",
+    "한국전력", "농협은행", "기업은행", "신한은행", "우리은행", "국민은행", "하나은행",
+]
+
 ORG_TYPE_MAP: dict[str, str] = {
     "삼성전자":   "corp",
     "현대자동차": "corp",

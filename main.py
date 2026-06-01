@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.advisor import advise
+from app.advisor import advise, SUPPORTED_COMPANIES
 from app.chat import chat_reply
 from app.search import retrieve
 
@@ -51,6 +51,11 @@ class RetrieveRequest(BaseModel):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/companies")
+async def companies():
+    return {"companies": SUPPORTED_COMPANIES}
 
 
 @app.post("/advise")
