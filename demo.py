@@ -10,6 +10,7 @@ examples/ 폴더의 기업별 예시 자소서를 골라 첨삭 결과를 출력
     python demo.py --json        # JSON 원본 출력
 """
 
+
 import argparse
 import json
 import sys
