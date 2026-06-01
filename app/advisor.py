@@ -25,6 +25,13 @@ from .prompt import SYSTEM_PROMPT, build_user_prompt
 from .jd_data import get_jd_summary
 from .company_normalizer import normalize_company, get_supported_companies
 
+import sys
+from pathlib import Path
+_ROOT = Path(__file__).parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+from preprocessing.preprocess import classify_question_type
+
 load_dotenv()
 
 # ── ORG_TYPE_MAP ──────────────────────────────────────────────────────────────
@@ -96,6 +103,7 @@ def advise(
     n_refs: int           = 3,
     min_similarity: float = 0.5,
     model: str            = DEFAULT_MODEL,
+    max_chars: int        = 0,
 ) -> dict:
     # 0. 기업명 정규화
     canonical = normalize_company(company)
@@ -106,24 +114,28 @@ def advise(
         }
     company = canonical
 
-    # 1. RAG 검색
+    # 1. 질문 유형 분류
+    q_type = classify_question_type(question, draft[:200])
+
+    # 2. RAG 검색
     query = f"{question}\n{draft}"
     refs, ref_warning = _search_with_fallback(
         query=query, company=company, n_refs=n_refs, min_similarity=min_similarity,
     )
 
-    # 2. 참고자소서 평균 글자수
+    # 3. 참고자소서 평균 글자수
     char_counts = [r.get("char_count", 0) for r in refs if r.get("char_count", 0) > 0]
     avg_ref_chars = int(sum(char_counts) / len(char_counts)) if char_counts else 0
 
-    # 3. 프롬프트 구성
+    # 4. 프롬프트 구성
     jd_summary = get_jd_summary(company)
     user_prompt = build_user_prompt(
         draft=draft, question=question, company=company,
         references=refs, avg_ref_chars=avg_ref_chars, jd_summary=jd_summary,
+        question_type=q_type, max_chars=max_chars,
     )
 
-    # 4. OpenRouter API 호출
+    # 5. OpenRouter API 호출
     client = OpenAI(
         api_key=os.environ.get("OPENROUTER_API_KEY"),
         base_url="https://openrouter.ai/api/v1",
@@ -151,7 +163,7 @@ def advise(
                 continue
             parsed = {"summary": raw_text[:500], "pros": [], "cons": [], "rewrite": "", "_raw": raw_text}
 
-    # 5. 결과 조합
+    # 6. 결과 조합
     rewrite_text = parsed.get("rewrite", "")
     return {
         "draft":         draft,
@@ -176,7 +188,8 @@ def advise(
             for r in refs
         ],
         "ref_warning":   ref_warning,
-        "jd_used":       bool(jd_summary),
-        "tokens_used":   tokens_used,
-        "model":         model,
+        "jd_used":        bool(jd_summary),
+        "question_type":  q_type,
+        "tokens_used":    tokens_used,
+        "model":          model,
     }
