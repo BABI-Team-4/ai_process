@@ -40,20 +40,21 @@ log = logging.getLogger(__name__)
 MIN_ANSWER_LEN = 50   # 이보다 짧은 답변은 is_valid = 0
 
 # ── 리뷰·평가 섹션 제거 (크롤링 아티팩트 — 자소서 본문 아님) ──────────────────
-# 별점 라인, 리뷰/스펙 헤더, 조회·추천·스크랩 수 등이 content 끝에 붙는 경우 제거
+# 별점 라인, 리뷰/스펙 헤더, 조회·추천·스크랩 수(콜론+숫자 형태), 이모지 홍보 문구
 REVIEW_SECTION_RE = re.compile(
     r'(?:\n|^)[ \t]*(?:'
     r'[★☆]+'                                          # 별점 행
     r'|\[(?:리뷰|평가|합격자\s*스펙|스펙|한줄평|총평)\]'   # 리뷰·스펙 헤더
-    r'|조회\s*[:：]\s*\d+'                              # 조회수
-    r'|추천\s*[:：]\s*\d+'                              # 추천수
-    r'|스크랩\s*[:：]\s*\d+'                            # 스크랩수
+    r'|조회\s*[:：]\s*\d+'                              # 조회: N
+    r'|추천\s*[:：]\s*\d+'                              # 추천: N
+    r'|스크랩\s*[:：]\s*\d+'                            # 스크랩: N
+    r'|[^\w\s가-힣a-zA-Z]{1,3}\s*\S+.*TOP\s*자소서'    # 🔥삼성전자 스크랩 TOP 자소서 등
     r').*',
     re.DOTALL,
 )
 
-# ── 소제목 패턴: 답변 첫 줄이 [소제목] 단독 행인 경우 ──────────────────────────
-SUBTITLE_RE = re.compile(r'^\[([^\]]{2,40})\]\s*$')
+# ── 소제목 패턴: [소제목] 또는 <소제목> 단독 행 ────────────────────────────────
+SUBTITLE_RE = re.compile(r'^(?:\[([^\]]{2,40})\]|<([^>]{2,40})>)\s*$')
 
 # ── 패턴 1: 표준 구분자 (Q1 / 1. / 【】 / [] / ■◆)
 QA_SPLIT_RE = re.compile(
@@ -136,6 +137,18 @@ def clean_text(text: str) -> str:
     return text.strip()
 
 
+def _extract_subtitles(answer: str) -> tuple[list[str], str]:
+    """answer에서 [소제목]/<소제목> 단독 행을 모두 추출. (subtitles, 제거된 answer)"""
+    subtitles, kept = [], []
+    for line in answer.split("\n"):
+        m = SUBTITLE_RE.match(line.strip())
+        if m:
+            subtitles.append(m.group(1) or m.group(2))
+        else:
+            kept.append(line)
+    return subtitles, "\n".join(kept).strip()
+
+
 def _build_pairs(content: str, splits: list) -> list[dict]:
     """매칭된 splits 위치로 Q&A 쌍 구성 (공통 로직)"""
     pairs = []
@@ -148,24 +161,27 @@ def _build_pairs(content: str, splits: list) -> list[dict]:
         question = lines[0].strip()
         answer   = lines[1].strip() if len(lines) > 1 else ""
 
-        # Case A: question 자체가 [소제목] 형태 → QA_SPLIT_RE가 소제목을 구분자로 잘못 분리한 경우
+        # Case A: question 자체가 [소제목]/<소제목> 형태 → QA_SPLIT_RE 오분리
         #         이전 쌍의 question에 병합하고 answer도 이어 붙임
-        subtitle_q = SUBTITLE_RE.match(question)
-        if subtitle_q and pairs:
-            subtitle = subtitle_q.group(1)
-            pairs[-1]["question"] += f" / 소제목: {subtitle}"
-            if answer:
-                pairs[-1]["answer"] = f"{pairs[-1]['answer']}\n\n{answer}" if pairs[-1]["answer"] else answer
+        sub_q = SUBTITLE_RE.match(question)
+        if sub_q and pairs:
+            subtitle = sub_q.group(1) or sub_q.group(2)
+            # answer 안의 추가 소제목도 함께 추출
+            extra_subs, clean_ans = _extract_subtitles(answer) if answer else ([], "")
+            all_subs = [subtitle] + extra_subs
+            pairs[-1]["question"] += " / 소제목: " + ", ".join(all_subs)
+            if clean_ans:
+                pairs[-1]["answer"] = f"{pairs[-1]['answer']}\n\n{clean_ans}" if pairs[-1]["answer"] else clean_ans
             continue
 
-        # Case B: 답변 첫 줄이 [소제목] 단독 행 → 추출 후 question에 추가, 답변에서 제거
+        # Case B: answer 전체에서 [소제목]/<소제목> 단독 행을 모두 추출
+        #         question에 "/ 소제목: A, B, C" 형태로 추가, answer에서 제거
         if answer:
-            first_line = answer.split("\n")[0].strip()
-            subtitle_a = SUBTITLE_RE.match(first_line)
-            if subtitle_a:
-                subtitle = subtitle_a.group(1)
-                question = f"{question} / 소제목: {subtitle}" if question else f"소제목: {subtitle}"
-                answer   = "\n".join(answer.split("\n")[1:]).strip()
+            subtitles, clean_answer = _extract_subtitles(answer)
+            if subtitles:
+                sub_str = ", ".join(subtitles)
+                question = f"{question} / 소제목: {sub_str}" if question else f"소제목: {sub_str}"
+                answer   = clean_answer
 
         if not answer:
             continue
@@ -361,6 +377,7 @@ def run_dry_run() -> None:
         ("열심히 준비했습니다.\n★★★★☆\n좋은 자소서입니다.", "열심히 준비했습니다.", "리뷰 섹션 제거(별점)"),
         ("노력했습니다.\n[리뷰]\n정말 잘 썼어요.", "노력했습니다.", "리뷰 섹션 제거([리뷰] 헤더)"),
         ("좋은 경험이었습니다.\n조회: 1234\n추천: 56", "좋은 경험이었습니다.", "리뷰 섹션 제거(조회수)"),
+        ("열심히 했습니다.\n🔥삼성전자 스크랩 TOP 자소서 함께 확인하세요!", "열심히 했습니다.", "리뷰 섹션 제거(이모지 홍보)"),
     ]
     print("\n▶ clean_text()")
     for raw, expected, label in cases_clean:
@@ -385,20 +402,24 @@ def run_dry_run() -> None:
     print(f"  [{'✓' if ok_a_q else '✗'}] question에 소제목 병합: {pairs_a[0]['question']!r}")
     print(f"  [{'✓' if len(pairs_a)==2 else '✗'}] 쌍 수 유지 (2개): {len(pairs_a)}개")
 
-    # Case B: answer 첫 줄에 [소제목]이 오는 경우 (구분자 미탐지)
+    # Case B: answer 내 다중 소제목 ([소제목] + <소제목> 혼합)
     sample_sub_b = """Q1 지원동기를 기술하십시오.
-[도전 정신]
-저는 도전을 두려워하지 않습니다.
+[소통의 시작]
+저는 팀 내 소통을 중시합니다.
+[목표 공유의 성과]
+목표를 나누면 힘이 됩니다.
+<글로벌 도전>
+해외 경험도 있습니다.
 
 Q2 성장과정을 기술하십시오.
 어릴 때부터 공학에 관심이 많았습니다.
 """
-    print("\n▶ _build_pairs() — 소제목 추출 (Case B: answer 첫 줄)")
+    print("\n▶ _build_pairs() — 소제목 추출 (Case B: 다중 소제목 + <소제목>)")
     pairs_b = split_linkareer_qna(sample_sub_b)
-    ok_b_q = len(pairs_b) >= 1 and "도전 정신" in pairs_b[0]["question"]
-    ok_b_a = len(pairs_b) >= 1 and not pairs_b[0]["answer"].startswith("[도전 정신]")
-    print(f"  [{'✓' if ok_b_q else '✗'}] question에 소제목 추가: {pairs_b[0]['question']!r}")
-    print(f"  [{'✓' if ok_b_a else '✗'}] answer 첫 줄에서 소제목 제거됨")
+    ok_b_q = len(pairs_b) >= 1 and all(s in pairs_b[0]["question"] for s in ["소통의 시작", "목표 공유의 성과", "글로벌 도전"])
+    ok_b_a = len(pairs_b) >= 1 and "[소통의 시작]" not in pairs_b[0]["answer"]
+    print(f"  [{'✓' if ok_b_q else '✗'}] question에 소제목 모두 추가: {pairs_b[0]['question']!r}")
+    print(f"  [{'✓' if ok_b_a else '✗'}] answer에서 소제목 행 제거됨")
 
     # split_linkareer_qna 테스트 — 표준 패턴
     sample_std = """
